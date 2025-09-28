@@ -55,7 +55,7 @@ export const navBarConfig: NavBarConfig = {
 export const profileConfig: ProfileConfig = {
 	avatar: "assets/images/demo-avatar.png", // Relative to the /src directory. Relative to the /public directory if it starts with '/'
 	name: "Junnan Ying",
-	bio: "Junnan Ying dolor sit amet, consectetur adipiscing elit.",
+	bio: "Cloud-Native DevOps Engineer (Fortune 500 exp.), proficient in Kubernetes, Python, and AWS Cloud Platform.",
 	links: [
 		{
 			name: "Twitter",
