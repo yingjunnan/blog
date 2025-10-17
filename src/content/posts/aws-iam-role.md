@@ -1,10 +1,10 @@
 ---
-title: aws-iam-role
+title: AWS IAM Role 操作指南
 published: 2025-10-17
 description: ' 介绍如何使用AWS CLI查看和管理IAM角色，包括查看角色列表、详细信息、附加策略以及策略内容。'
 image: ''
 tags: ['aws', 'iam', 'role']
-category: 'aws'
+category: 'AWS'
 draft: false 
 lang: ''
 ---
