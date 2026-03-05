@@ -252,7 +252,167 @@ kubectl get events -A --sort-by=.lastTimestamp | tail -n 50
 - 配置可观测性：LB 日志、应用指标、SLO 告警（5xx、延迟、连接失败率）。
 - 对关键流量启用灰度发布和回滚预案。
 
-## 9. 参考文档（官方）
+## 9. 完整串通案例：使用 Nginx 同时走通 ALB + NLB
+
+本案例目标：同一个 `nginx` 工作负载，同时通过以下两种方式对外暴露。
+
+- **ALB（L7）**：`Ingress(gce)`，验证 Host/Path 七层路由
+- **NLB（L4）**：`Service(type=LoadBalancer)`，验证四层直连
+
+### 9.1 准备变量与静态 IP
+
+```bash
+export PROJECT_ID=$(gcloud config get-value project)
+export REGION=asia-east1
+export NS=nginx-expose-demo
+
+# ALB 使用 global 静态 IP（Ingress external）
+gcloud compute addresses create nginx-demo-alb-ip --global
+
+# NLB 使用 regional 静态 IP（Service external）
+gcloud compute addresses create nginx-demo-nlb-ip --region=${REGION}
+```
+
+### 9.2 一次性部署全部资源
+
+```yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: nginx-expose-demo
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx
+  namespace: nginx-expose-demo
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.27-alpine
+        ports:
+        - containerPort: 80
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 3
+          periodSeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-alb-svc
+  namespace: nginx-expose-demo
+  annotations:
+    cloud.google.com/neg: '{"ingress": true}'
+spec:
+  type: NodePort
+  selector:
+    app: nginx
+  ports:
+  - name: http
+    protocol: TCP
+    port: 80
+    targetPort: 80
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nginx-alb
+  namespace: nginx-expose-demo
+  annotations:
+    kubernetes.io/ingress.class: "gce"
+    kubernetes.io/ingress.global-static-ip-name: "nginx-demo-alb-ip"
+spec:
+  rules:
+  - host: nginx.demo.local
+    http:
+      paths:
+      - path: /*
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: nginx-alb-svc
+            port:
+              number: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-nlb-svc
+  namespace: nginx-expose-demo
+  annotations:
+    cloud.google.com/l4-rbs: "enabled"
+    networking.gke.io/load-balancer-ip-addresses: "nginx-demo-nlb-ip"
+spec:
+  type: LoadBalancer
+  externalTrafficPolicy: Local
+  selector:
+    app: nginx
+  ports:
+  - name: tcp-80
+    protocol: TCP
+    port: 80
+    targetPort: 80
+```
+
+应用资源：
+
+```bash
+kubectl apply -f nginx-expose-demo.yaml
+```
+
+### 9.3 验证 ALB / NLB 都已打通
+
+```bash
+kubectl -n ${NS} get deploy,pod,svc,ing
+
+export ALB_IP=$(kubectl -n ${NS} get ingress nginx-alb -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+export NLB_IP=$(kubectl -n ${NS} get svc nginx-nlb-svc -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+
+echo "ALB_IP=${ALB_IP}"
+echo "NLB_IP=${NLB_IP}"
+```
+
+验证请求：
+
+```bash
+# ALB（L7）: 通过 Host 头命中 Ingress 规则
+curl -H "Host: nginx.demo.local" http://${ALB_IP}
+
+# NLB（L4）: 直连四层入口
+curl http://${NLB_IP}
+```
+
+预期两条请求都能返回 `Welcome to nginx!` 页面内容。
+
+> 说明：ALB 首次创建通常需要 3~10 分钟；NLB 一般更快。
+
+### 9.4 内网版本改法（同一套 YAML 快速变体）
+
+1. ALB 改成内网：`kubernetes.io/ingress.class: "gce-internal"`，并使用 regional 内网静态 IP 注解。
+2. NLB 改成内网：为 `nginx-nlb-svc` 增加 `networking.gke.io/load-balancer-type: "Internal"`。
+3. 验证方式改为在同 VPC 的跳板机上 `curl`。
+
+### 9.5 回收资源
+
+```bash
+kubectl delete ns ${NS}
+gcloud compute addresses delete nginx-demo-alb-ip --global --quiet
+gcloud compute addresses delete nginx-demo-nlb-ip --region=${REGION} --quiet
+```
+
+## 10. 参考文档（官方）
 
 - [GKE Ingress（ALB）](https://cloud.google.com/kubernetes-engine/docs/how-to/load-balance-ingress)
 - [GKE Ingress 概念与限制](https://cloud.google.com/kubernetes-engine/docs/concepts/ingress)
