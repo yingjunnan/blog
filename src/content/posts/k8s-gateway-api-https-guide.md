@@ -1,15 +1,19 @@
 ---
 title: Kubernetes 中使用 Gateway API 暴露服务与 HTTPS 证书绑定实战
 published: 2026-04-16
-description: 从零梳理 Gateway API 的核心资源、服务暴露流程，以及通过 cert-manager + Let's Encrypt 为 Gateway 绑定 HTTPS 证书的完整步骤与落地案例。
+description: 详解 Kubernetes Gateway API 服务暴露方案，包含 Gateway、HTTPRoute、cert-manager、Let's Encrypt HTTPS 证书绑定步骤、完整 YAML 示例与实战排障清单。
 image: ''
-tags: [Kubernetes, Gateway API, HTTPS, cert-manager, Envoy Gateway, DevOps]
+tags: [Kubernetes, Gateway API, HTTPRoute, HTTPS, TLS, cert-manager, Let's Encrypt, Envoy Gateway, Ingress]
 category: Cloud Platform
 draft: false
 lang: 'ZH_CN'
 ---
 
 # Kubernetes 中使用 Gateway API 暴露服务与 HTTPS 证书绑定实战
+
+## 摘要
+
+本文围绕 Kubernetes Gateway API 服务暴露展开，重点说明如何使用 `Gateway`、`HTTPRoute`、`cert-manager` 与 `Let's Encrypt` 实现 HTTP/HTTPS 入口管理、TLS 证书自动签发与续期，并补充可直接复用的 YAML 配置、上线步骤与排障方法。适合正在从 Ingress 迁移到 Gateway API，或者准备统一管理 Kubernetes 南北向流量入口的团队参考。
 
 在 Kubernetes 里做服务暴露，很多人第一反应还是 `Service + Ingress`。但随着业务复杂度上升，传统 Ingress 的几个问题会越来越明显：
 
@@ -817,3 +821,28 @@ openssl s_client -connect demo.example.com:443 -servername demo.example.com
 如果你只是想先跑通，我建议直接按本文的 `Envoy Gateway + cert-manager + Let's Encrypt staging` 方案先做一遍。它足够标准、足够通用，而且后续切换到生产证书也很顺滑。
 
 等这套跑通之后，再结合你的云平台实现、WAF、CDN、私有 CA 或多环境发布策略继续增强，会轻松很多。
+
+## 18. 封面图建议
+
+如果你后面想给这篇文章补封面图，我建议封面图标题直接围绕以下关键词设计：
+
+- Gateway API
+- HTTPRoute
+- HTTPS / TLS
+- cert-manager
+- Let's Encrypt
+
+一个比较适合技术博客首页点击的封面文案可以是：
+
+```text
+Kubernetes Gateway API + HTTPS 实战
+```
+
+画面上可以采用下面这种结构：
+
+- 左侧：Client / DNS / HTTPS
+- 中间：Gateway / HTTPRoute
+- 右侧：Service / Pod
+- 右上角或角标：cert-manager + Let's Encrypt
+
+如果你愿意，我下次可以直接继续帮你做一张适合这篇文章的封面图。
