@@ -2,7 +2,7 @@
 title: Kubernetes 中使用 Gateway API 暴露服务与 HTTPS 证书绑定实战
 published: 2026-04-16
 description: 详解 Kubernetes Gateway API 服务暴露方案，包含 Gateway、HTTPRoute、cert-manager、Let's Encrypt HTTPS 证书绑定步骤、完整 YAML 示例与实战排障清单。
-image: ''
+image: '/covers/gateway-api-https-cover.svg'
 tags: [Kubernetes, Gateway API, HTTPRoute, HTTPS, TLS, cert-manager, Let's Encrypt, Envoy Gateway, Ingress]
 category: Cloud Platform
 draft: false
